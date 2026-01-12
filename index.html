@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>輔具歷程產生器(日期修復版)</title>
+    <title>輔具歷程產生器(排序增強版)</title>
     
     <style>
         /* --- 基礎設定 --- */
@@ -11,7 +11,7 @@
         .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2563eb; border-bottom: 3px solid #2563eb; padding-bottom: 15px; margin-bottom: 20px; }
         
-        /* --- 新增：詳細說明區塊 --- */
+        /* 說明區塊 */
         .instructions {
             background-color: #eff6ff; 
             border-left: 5px solid #3b82f6; 
@@ -26,20 +26,30 @@
         .instructions ol { margin: 0; padding-left: 20px; }
         .instructions li { margin-bottom: 4px; }
 
-        /* 系統選擇切換區 */
-        .system-selector {
+        /* 系統選擇與排序工具列 */
+        .toolbar {
             display: flex;
-            justify-content: center;
-            gap: 20px;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
             margin-bottom: 15px;
             background-color: #f8fafc;
             padding: 15px;
             border-radius: 8px;
             border: 1px solid #cbd5e1;
         }
-        .radio-label { display: flex; align-items: center; cursor: pointer; font-size: 1.1rem; font-weight: bold; color: #334155; }
+        .system-selector { display: flex; gap: 20px; }
+        .sort-actions { display: flex; gap: 10px; }
+
+        .radio-label { display: flex; align-items: center; cursor: pointer; font-size: 1rem; font-weight: bold; color: #334155; }
         .radio-label input { margin-right: 8px; transform: scale(1.2); }
-        .radio-label:hover { color: #2563eb; }
+        
+        /* 按鈕樣式 */
+        button { cursor: pointer; transition: 0.2s; border: none; border-radius: 6px; font-weight: bold; }
+        
+        .btn-sort { padding: 8px 15px; background-color: #e2e8f0; color: #475569; font-size: 0.9rem; }
+        .btn-sort:hover { background-color: #cbd5e1; color: #1e293b; }
 
         /* 文字貼上區 */
         #paste-area {
@@ -57,19 +67,13 @@
         }
         #paste-area:focus { outline: none; border-color: #2563eb; background-color: #fff; }
 
-        /* 解析按鈕 */
         .btn-parse {
             width: 100%;
             padding: 12px;
             background-color: #4f46e5;
             color: white;
-            border: none;
-            border-radius: 6px;
             font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
             margin-bottom: 30px;
-            transition: 0.2s;
         }
         .btn-parse:hover { background-color: #4338ca; }
 
@@ -80,7 +84,7 @@
             display: flex; 
             flex-wrap: wrap; 
             gap: 15px; 
-            padding: 25px 20px 20px 20px; 
+            padding: 30px 20px 20px 20px; /* 上方留空間 */
             border: 1px solid #e5e7eb; 
             border-radius: 8px; 
             margin-bottom: 15px; 
@@ -126,7 +130,14 @@
         .box-item    { flex: 1; min-width: 200px; }
         .box-expiry  { flex: 0 0 160px; }
         .box-note    { flex: 0 0 120px; }
-        .box-del     { flex: 0 0 50px; }
+        
+        /* 調整刪除與移動按鈕區塊 */
+        .box-actions { 
+            flex: 0 0 90px; 
+            display: flex; 
+            gap: 5px; 
+            justify-content: flex-end;
+        }
 
         label { font-size: 0.9rem; font-weight: bold; color: #4b5563; margin-bottom: 5px; }
         .label-rental { color: #d97706 !important; } 
@@ -135,15 +146,25 @@
         input:focus, select:focus { border-color: #2563eb; outline: 2px solid #93c5fd; }
 
         .btn-group { display: flex; justify-content: center; gap: 15px; margin: 30px 0; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb; }
-        button { padding: 12px 25px; font-size: 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; color: white; }
-        .btn-add   { background-color: #2563eb; }
-        .btn-gen   { background-color: #059669; }
-        .btn-reset { background-color: #64748b; }
-        .btn-del { background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 8px; width: 100%; }
+        
+        .btn-add   { padding: 12px 25px; background-color: #2563eb; color: white; font-size: 1rem; }
+        .btn-gen   { padding: 12px 25px; background-color: #059669; color: white; font-size: 1rem; }
+        .btn-reset { padding: 12px 25px; background-color: #64748b; color: white; font-size: 1rem; }
+        
+        /* 小按鈕樣式 (刪除/移動) */
+        .btn-icon { padding: 8px; width: 100%; font-size: 0.9rem; color: white; }
+        .btn-del { background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+        .btn-move { background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; width: 30px; padding: 5px 0;}
+        .btn-move:hover { background-color: #e2e8f0; color: #0f172a; }
 
         textarea.output-box { width: 100%; height: 180px; padding: 15px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1.1rem; font-family: monospace; background-color: #f1f5f9; box-sizing: border-box; }
         
-        @media (max-width: 768px) { .input-row { flex-direction: column; align-items: stretch; } .box-channel, .box-date, .box-expiry, .box-note, .box-del { flex: auto; } .btn-del { margin-top: 10px; } }
+        @media (max-width: 768px) { 
+            .input-row { flex-direction: column; align-items: stretch; } 
+            .box-channel, .box-date, .box-expiry, .box-note, .box-actions { flex: auto; } 
+            .box-actions { flex-direction: row; margin-top: 10px; }
+            .toolbar { flex-direction: column; align-items: stretch; }
+        }
     </style>
 </head>
 <body>
@@ -155,21 +176,27 @@
         <h3>📌 使用說明：</h3>
         <ol>
             <li>歷程產生器可透過複製整欄表格解析輸入或自行填入欄位資料產出彙整文字。</li>
-            <li>請依據複製的欄位格式是來自哪個系統做選擇再進行解析，日期格式會自動變成民國。</li>
-            <li>管道選擇長照或長照租賃會自動計算有效期限，但需要文字跟系統上一模一樣，另外需要自行將「申請/核定日/購買日」欄位的日期改成購買日才會跑出正確的有效期限。</li>
-            <li>透過解析目前管道僅能分別出長照、退輔、身障、健保。其他請自行手動修正。</li>
+            <li>請依據複製的欄位格式是來自哪個系統做選擇再進行解析。</li>
+            <li>系統預設會依照<b>「日期先後」</b>自動排序解析後的資料。</li>
+            <li>您可以使用右側的 ⬆️ ⬇️ 按鈕手動調整順序，或使用上方按鈕重新排序。</li>
             <li>若有核定日系統會自動優先抓取核定日而不是申請日。</li>
             <li>有發現其他bug請反應給Danny謝謝~</li>
         </ol>
     </div>
 
-    <div class="system-selector">
-        <label class="radio-label">
-            <input type="radio" name="systemType" value="LTC" checked> 長照系統
-        </label>
-        <label class="radio-label">
-            <input type="radio" name="systemType" value="DIS"> 身障系統
-        </label>
+    <div class="toolbar">
+        <div class="system-selector">
+            <label class="radio-label">
+                <input type="radio" name="systemType" value="LTC" checked> 長照系統
+            </label>
+            <label class="radio-label">
+                <input type="radio" name="systemType" value="DIS"> 身障系統
+            </label>
+        </div>
+        <div class="sort-actions">
+            <button class="btn-sort" onclick="sortRows('date')">📅 依日期排序</button>
+            <button class="btn-sort" onclick="sortRows('channel')">📂 依管道分群</button>
+        </div>
     </div>
 
     <textarea id="paste-area" placeholder="請將系統表格的內容選取複製 (Ctrl+C)，並在此貼上 (Ctrl+V)"></textarea>
@@ -210,9 +237,11 @@
                     <option value="申請">申請</option>
                 </select>
             </div>
-            <div class="field-box box-del">
-                <label style="visibility: hidden;">刪</label>
-                <button class="btn-del" onclick="removeRow(this)">✕</button>
+            <div class="field-box box-actions">
+                <label style="visibility: hidden;">操</label>
+                <button class="btn-icon btn-move" onclick="moveRow(this, -1)" title="上移">⬆</button>
+                <button class="btn-icon btn-move" onclick="moveRow(this, 1)" title="下移">⬇</button>
+                <button class="btn-icon btn-del" onclick="removeRow(this)" title="刪除">✕</button>
             </div>
         </div>
     </div>
@@ -313,7 +342,7 @@
     })();
 
     // ==========================================
-    //  ★ 解析核心邏輯 (不變) ★
+    //  ★ 解析核心邏輯 ★
     // ==========================================
 
     function handleParse() {
@@ -337,15 +366,26 @@
         }
 
         if (parsedData.length > 0) {
+            // ★ 解析後自動依日期排序 (較早的在上面)
+            parsedData.sort((a, b) => {
+                return parseDateValue(a.date) - parseDateValue(b.date);
+            });
+
             fillData(parsedData);
-            alert(`成功解析 ${parsedData.length} 筆資料！`);
+            alert(`成功解析 ${parsedData.length} 筆資料！(已自動依日期排序)`);
             textArea.value = "";
         } else {
-            alert("⚠️ 找不到有效資料！\n請確認：\n1. 選擇的系統正確嗎？\n2. 資料是否包含完整的日期欄位？");
+            alert("⚠️ 找不到有效資料！請確認複製來源與選擇系統是否正確。");
         }
     }
 
-    // --- 1. 長照系統解析邏輯 ---
+    // 將日期字串 112/05/01 轉為數字 1120501 以便排序
+    function parseDateValue(dateStr) {
+        if (!dateStr) return 0;
+        return parseInt(dateStr.replace(/\//g, '')) || 0;
+    }
+
+    // --- 1. 長照系統解析 ---
     function parseLongTermCare(lines) {
         let results = [];
         lines.forEach(line => {
@@ -390,7 +430,7 @@
         return results;
     }
 
-    // --- 2. 身障系統解析邏輯 ---
+    // --- 2. 身障系統解析 ---
     function parseDisability(lines) {
         let results = [];
         lines.forEach(line => {
@@ -451,12 +491,10 @@
         return clean.length >= 6;
     }
 
-    // ★ 重點更新：日期格式化 (含西元轉民國)
     function formatDate(str) {
         if(!str) return "";
         let clean = str.trim().replace(/[.\-]/g, '/').replace(/年|月/g, '/').replace(/日/g, '');
         
-        // 處理純數字 (ex: 1120501 or 20230501)
         if (clean.match(/^\d{6,8}$/)) {
             if (clean.length === 7) { 
                 clean = `${clean.substring(0,3)}/${clean.substring(3,5)}/${clean.substring(5,7)}`;
@@ -474,29 +512,39 @@
             let y = parseInt(parts[0]);
             let m = parts[1];
             let d = parts[2];
-            
-            // 如果年份大於 1911 (判定為西元)，則減去 1911
-            if (y > 1911) {
-                y = y - 1911;
-            }
-            
-            // 補0
+            if (y > 1911) { y = y - 1911; }
             m = m.toString().padStart(2, '0');
             d = d.toString().padStart(2, '0');
-            
             return `${y}/${m}/${d}`;
         }
-        
         return clean;
     }
 
     function fillData(dataList) {
-        dataList.forEach(data => {
-            const rows = document.querySelectorAll('.input-row');
-            let targetRow = rows[rows.length - 1];
-            if (targetRow.querySelector('.date-apply').value || targetRow.querySelector('.item').value) {
+        // 先清空現有資料 (除了第一筆如果是空的)
+        const container = document.getElementById('input-container');
+        const rows = container.querySelectorAll('.input-row');
+        // 如果只有一筆且是空的，直接覆蓋
+        let targetRow = rows[0];
+        let startIdx = 0;
+        
+        if (rows.length === 1 && !rows[0].querySelector('.date-apply').value && !rows[0].querySelector('.item').value) {
+            // 直接用第一筆
+        } else {
+            // 新增資料
+            // 這裡改成：保留原有資料，將新解析的「附加」在後面，還是「清空重填」？
+            // 根據使用習慣，通常是「清空重填」或「附加」。這裡我們用附加邏輯。
+            if (targetRow.querySelector('.date-apply').value) {
                 addRow();
-                const newRows = document.querySelectorAll('.input-row');
+                const newRows = container.querySelectorAll('.input-row');
+                targetRow = newRows[newRows.length - 1];
+            }
+        }
+
+        dataList.forEach((data, index) => {
+            if (index > 0) { // 第一筆已經在上面處理了，第二筆開始要新增
+                addRow();
+                const newRows = container.querySelectorAll('.input-row');
                 targetRow = newRows[newRows.length - 1];
             }
 
@@ -520,7 +568,49 @@
     }
 
     // ==========================================
-    //  ★ 介面與計算邏輯 (含視覺防呆更新) ★
+    //  ★ 排序與移動功能 (新功能) ★
+    // ==========================================
+
+    function moveRow(btn, direction) {
+        const row = btn.closest('.input-row');
+        const container = document.getElementById('input-container');
+        
+        if (direction === -1) { // 上移
+            const prevRow = row.previousElementSibling;
+            if (prevRow) {
+                container.insertBefore(row, prevRow);
+            }
+        } else { // 下移
+            const nextRow = row.nextElementSibling;
+            if (nextRow) {
+                container.insertBefore(nextRow, row);
+            }
+        }
+        // CSS counter 會自動處理編號，無需 JS 重算
+    }
+
+    function sortRows(criteria) {
+        const container = document.getElementById('input-container');
+        const rows = Array.from(container.querySelectorAll('.input-row'));
+
+        rows.sort((a, b) => {
+            if (criteria === 'date') {
+                const dateA = parseDateValue(a.querySelector('.date-apply').value);
+                const dateB = parseDateValue(b.querySelector('.date-apply').value);
+                return dateA - dateB;
+            } else if (criteria === 'channel') {
+                const chA = a.querySelector('.channel').value;
+                const chB = b.querySelector('.channel').value;
+                return chA.localeCompare(chB); // 中文排序
+            }
+        });
+
+        // 重新排列 DOM
+        rows.forEach(row => container.appendChild(row));
+    }
+
+    // ==========================================
+    //  ★ 介面與計算邏輯 ★
     // ==========================================
     function addRow() {
         const container = document.getElementById('input-container');
@@ -559,9 +649,11 @@
                     <option value="申請">申請</option>
                 </select>
             </div>
-            <div class="field-box box-del">
-                <label style="visibility: hidden;">刪</label>
-                <button class="btn-del" onclick="removeRow(this)">✕</button>
+            <div class="field-box box-actions">
+                <label style="visibility: hidden;">操</label>
+                <button class="btn-icon btn-move" onclick="moveRow(this, -1)" title="上移">⬆</button>
+                <button class="btn-icon btn-move" onclick="moveRow(this, 1)" title="下移">⬇</button>
+                <button class="btn-icon btn-del" onclick="removeRow(this)" title="刪除">✕</button>
             </div>
         `;
         container.appendChild(div);
